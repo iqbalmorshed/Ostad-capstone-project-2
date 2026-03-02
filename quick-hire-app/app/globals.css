@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #4640de;
+  --color-accent-blue: #26a4ff;
+  --color-nav-text: #64748b;
+  --color-nav-separator: #e2e8f0;
+  /* Clash Display: add next/font/local in layout and set --font-clash-loaded */
+  --font-clash: var(--font-clash-loaded, "Clash Display"), system-ui, sans-serif;
+  --font-epilogue: var(--font-epilogue-loaded), system-ui, sans-serif;
+  --font-inter: var(--font-inter-loaded), system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-accent-blue: var(--color-accent-blue);
+  --color-nav-text: var(--color-nav-text);
+  --color-nav-separator: var(--color-nav-separator);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-clash);
+}
+
+body {
+  font-family: var(--font-inter);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
