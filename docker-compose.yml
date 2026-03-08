@@ -1,0 +1,41 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: quickhire-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  backend:
+    build:
+      context: ./quick-hire
+      dockerfile: Dockerfile
+    container_name: quickhire-backend
+    restart: unless-stopped
+    ports:
+      - "2021:3000"
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/quick-hire}
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./quick-hire-app
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:2021/api}
+    container_name: quickhire-frontend
+    restart: unless-stopped
+    ports:
+      - "2020:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
