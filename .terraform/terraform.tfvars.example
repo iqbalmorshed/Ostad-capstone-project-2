@@ -1,0 +1,14 @@
+# Copy this file to terraform.tfvars and fill in your values.
+
+aws_region           = "ap-southeast-1"
+availability_zone    = "ap-southeast-1a"
+key_name             = "aws_rsa"
+
+# Optional overrides (defaults shown)
+# vpc_cidr             = "10.0.0.0/16"
+# public_subnet_cidr   = "10.0.1.0/24"
+# master_instance_type = "t3.medium"
+# worker_instance_type = "t3.small"
+# worker_count         = 2
+# project_name         = "quick-hire"
+# allowed_ssh_cidr     = "0.0.0.0/0"   # restrict to your IP for security
