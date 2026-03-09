@@ -1,0 +1,70 @@
+{
+  "dashboard": {
+    "title": "NestJS Backend - CPU & Application Logs",
+    "tags": ["nestjs", "backend", "monitoring"],
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Usage",
+        "type": "timeseries",
+        "gridPos": { "h": 16, "w": 12, "x": 0, "y": 0 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"quickhire\", pod=~\"backend.*\", container!=\"\"}[5m])) by (pod)",
+            "legendFormat": "{{pod}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "pointSize": 5,
+              "showPoints": "auto",
+              "spanNulls": false
+            },
+            "color": { "mode": "palette-classic" }
+          }
+        },
+        "options": {
+          "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+          "tooltip": { "mode": "multi" }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Application Logs",
+        "type": "logs",
+        "gridPos": { "h": 16, "w": 12, "x": 12, "y": 0 },
+        "datasource": { "type": "loki", "uid": "effgll6w2a328b" },
+        "targets": [
+          {
+            "expr": "{namespace=\"quickhire\", pod=~\"backend.*\"}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "sortOrder": "Descending",
+          "dedupStrategy": "none"
+        }
+      }
+    ]
+  },
+  "overwrite": true
+}

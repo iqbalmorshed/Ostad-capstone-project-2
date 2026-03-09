@@ -8,6 +8,7 @@ A full-stack job board: **QuickHire** lets users browse jobs, filter by category
 |----------------|-------------|
 | `quick-hire/`  | Backend — NestJS API (auth, jobs, applications, users) |
 | `quick-hire-app/` | Frontend — Next.js app (home, job list, job detail, application form) |
+| `monitoring/`  | Loki Helm values and Grafana dashboard JSON files |
 | `scripts/`     | Root scripts (e.g. `build-test.sh` for build verification) |
 
 ## Run locally
@@ -213,6 +214,66 @@ argocd/
 ├── canary-application.yaml      ← Canary (manual sync)
 └── blue-green-application.yaml  ← Blue-green (manual sync)
 ```
+
+## Monitoring (Loki + Grafana)
+
+The `monitoring/` directory contains the Loki Helm values and pre-built Grafana dashboard JSON files used for log aggregation and cluster observability.
+
+### Files
+
+| File | Description |
+|------|-------------|
+| `monitoring/loki-values.yaml` | Helm values for deploying Loki in single-binary mode (filesystem storage, no caching/gateway) |
+| `monitoring/grafana-dashboard.json` | Grafana dashboard — NestJS backend CPU usage (Prometheus) + application logs (Loki) |
+| `monitoring/worker-node-dashboard.json` | Grafana dashboard — worker node system metrics (CPU, memory, disk, network, load, pods) |
+
+### Install Loki
+
+Add the Grafana Helm repo and install Loki with the provided values:
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm install loki grafana/loki -n monitoring --create-namespace -f monitoring/loki-values.yaml
+```
+
+### Install Promtail (log shipper)
+
+Promtail ships container logs to Loki:
+
+```bash
+helm install promtail grafana/promtail -n monitoring \
+  --set "config.clients[0].url=http://loki:3100/loki/api/v1/push"
+```
+
+### Add Loki as a data source in Grafana
+
+1. Open Grafana (e.g. `http://<GRAFANA_HOST>:3000`).
+2. Go to **Configuration → Data Sources → Add data source**.
+3. Select **Loki**.
+4. Set the URL to `http://loki.monitoring.svc.cluster.local:3100`.
+5. Click **Save & Test**.
+
+### View logs in Grafana
+
+1. Go to **Explore** (compass icon in the sidebar).
+2. Select the **Loki** data source.
+3. Run a LogQL query, for example:
+   ```
+   {namespace="quickhire", pod=~"backend.*"}
+   ```
+4. Use label filters (`namespace`, `pod`, `container`) to narrow results.
+
+### Import dashboards
+
+1. Go to **Dashboards → Import** (or the **+** icon → **Import**).
+2. Click **Upload JSON file** and select one of:
+   - `monitoring/grafana-dashboard.json` — shows backend CPU usage alongside live application logs.
+   - `monitoring/worker-node-dashboard.json` — shows per-node CPU, memory, disk, network, load averages, and pod counts.
+3. Select the appropriate Prometheus and Loki data sources when prompted.
+4. Click **Import**.
+
+The dashboards will auto-refresh (10 s for the backend dashboard, 30 s for the worker-node dashboard).
 
 ## More details
 
