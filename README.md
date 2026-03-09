@@ -9,6 +9,7 @@ A full-stack job board: **QuickHire** lets users browse jobs, filter by category
 | `quick-hire/`  | Backend — NestJS API (auth, jobs, applications, users) |
 | `quick-hire-app/` | Frontend — Next.js app (home, job list, job detail, application form) |
 | `monitoring/`  | Loki Helm values and Grafana dashboard JSON files |
+| `ansible/`     | Ansible playbooks to bootstrap K8s, ArgoCD, and monitoring on EC2 instances |
 | `scripts/`     | Root scripts (e.g. `build-test.sh` for build verification) |
 
 ## Run locally
@@ -214,6 +215,90 @@ argocd/
 ├── canary-application.yaml      ← Canary (manual sync)
 └── blue-green-application.yaml  ← Blue-green (manual sync)
 ```
+
+## Cluster Bootstrap (Ansible)
+
+After provisioning EC2 instances with Terraform, use the Ansible playbooks to automatically set up Kubernetes, ArgoCD, and the full monitoring stack.
+
+### Prerequisites
+
+- [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/) installed on your local machine
+- SSH key (`~/.ssh/aws_rsa`) that matches the `key_name` in Terraform
+- Terraform outputs available (instances must be running)
+
+### Quick start
+
+```bash
+# 1. Provision infrastructure
+cd .terraform
+terraform apply
+
+# 2. Generate Ansible inventory from Terraform outputs
+../ansible/generate-inventory.sh
+
+# 3. Run the playbook (bootstraps everything)
+cd ../ansible
+ansible-playbook -i inventory.ini playbook.yml
+```
+
+### What the playbook does
+
+The playbook runs 6 stages in order:
+
+| Stage | Hosts | Role | What it does |
+|-------|-------|------|-------------|
+| 1 | All nodes | `common` | Disables swap, installs containerd, kubeadm, kubelet, kubectl |
+| 2 | Master | `master` | Runs `kubeadm init`, installs Calico CNI, generates join token |
+| 3 | Workers | `worker` | Joins each worker to the cluster using the token from stage 2 |
+| 4 | Master | *(verify)* | Waits for all nodes to reach `Ready` state |
+| 5 | Master | `argocd` | Installs ArgoCD, exposes it on NodePort 30443 |
+| 6 | Master | `monitoring` | Installs Helm, kube-prometheus-stack, Loki, and Promtail |
+
+### Running individual roles
+
+You can run specific stages using tags or `--limit`:
+
+```bash
+# Only set up monitoring (assumes cluster is already running)
+ansible-playbook -i inventory.ini playbook.yml --start-at-task="Install monitoring"
+
+# Only run on workers
+ansible-playbook -i inventory.ini playbook.yml --limit workers
+```
+
+### File layout
+
+```
+ansible/
+├── ansible.cfg               ← Ansible configuration (SSH settings, inventory path)
+├── generate-inventory.sh     ← Generates inventory.ini from terraform output
+├── inventory.ini.tpl         ← Inventory template (reference)
+├── playbook.yml              ← Main playbook (runs all stages)
+└── roles/
+    ├── common/               ← containerd, kubeadm, kubelet, kubectl
+    │   ├── defaults/main.yml
+    │   ├── handlers/main.yml
+    │   └── tasks/main.yml
+    ├── master/               ← kubeadm init, Calico CNI
+    │   ├── defaults/main.yml
+    │   └── tasks/main.yml
+    ├── worker/               ← kubeadm join
+    │   └── tasks/main.yml
+    ├── argocd/               ← ArgoCD install + NodePort
+    │   ├── defaults/main.yml
+    │   └── tasks/main.yml
+    └── monitoring/           ← kube-prometheus-stack, Loki, Promtail
+        ├── defaults/main.yml
+        └── tasks/main.yml
+```
+
+### Access after bootstrap
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **ArgoCD** | `https://<ANY_NODE_IP>:30443` | `admin` / printed at end of playbook run |
+| **Grafana** | `http://<ANY_NODE_IP>:30300` | `admin` / printed at end of playbook run |
+| **Prometheus** | Internal: `http://kube-prom-stack-kube-prome-prometheus.monitoring.svc:9090` | — |
 
 ## Monitoring (Loki + Grafana)
 

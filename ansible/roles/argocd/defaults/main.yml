@@ -1,0 +1,3 @@
+---
+argocd_namespace: "argocd"
+argocd_version: "stable"

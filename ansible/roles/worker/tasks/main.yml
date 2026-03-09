@@ -1,0 +1,13 @@
+---
+# ──────────────────────────────────────────────
+#  Worker nodes — join the cluster
+# ──────────────────────────────────────────────
+
+- name: Check if node has already joined a cluster
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+
+- name: Join the Kubernetes cluster
+  command: "{{ hostvars[groups['master'][0]].kubeadm_join_command }}"
+  when: not kubelet_conf.stat.exists

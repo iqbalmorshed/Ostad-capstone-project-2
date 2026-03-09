@@ -1,0 +1,67 @@
+---
+# ══════════════════════════════════════════════
+#  QuickHire — Full Cluster Bootstrap Playbook
+#
+#  Usage:
+#    cd .terraform && terraform apply
+#    ../ansible/generate-inventory.sh
+#    cd ../ansible
+#    ansible-playbook -i inventory.ini playbook.yml
+# ══════════════════════════════════════════════
+
+# ── Step 1: Common setup on ALL nodes ──
+- name: Prepare all nodes (containerd, kubeadm, kubelet, kubectl)
+  hosts: k8s
+  become: true
+  roles:
+    - common
+
+# ── Step 2: Initialize master node ──
+- name: Initialize Kubernetes master
+  hosts: master
+  become: true
+  roles:
+    - master
+
+# ── Step 3: Join worker nodes ──
+- name: Join worker nodes to the cluster
+  hosts: workers
+  become: true
+  roles:
+    - worker
+
+# ── Step 4: Verify cluster ──
+- name: Verify all nodes are Ready
+  hosts: master
+  become: false
+  tasks:
+    - name: Wait for all worker nodes to be Ready
+      shell: |
+        kubectl get nodes --no-headers | grep -c ' Ready '
+      register: ready_count
+      retries: 30
+      delay: 10
+      until: ready_count.stdout | int >= (groups['workers'] | length + 1)
+
+    - name: Display cluster status
+      command: kubectl get nodes -o wide
+      register: node_status
+      changed_when: false
+
+    - name: Show cluster nodes
+      debug:
+        msg: "{{ node_status.stdout_lines }}"
+
+# ── Step 5: Install ArgoCD ──
+- name: Install ArgoCD
+  hosts: master
+  become: true
+  roles:
+    - argocd
+
+# ── Step 6: Install monitoring stack ──
+- name: Install monitoring stack (Prometheus, Grafana, Loki, Promtail)
+  hosts: master
+  become: true
+  roles:
+    - monitoring

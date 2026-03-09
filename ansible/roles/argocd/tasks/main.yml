@@ -1,0 +1,45 @@
+---
+# ──────────────────────────────────────────────
+#  ArgoCD — install on master node
+# ──────────────────────────────────────────────
+
+- name: Create argocd namespace
+  become: false
+  command: kubectl create namespace {{ argocd_namespace }}
+  register: ns_result
+  changed_when: ns_result.rc == 0
+  failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+
+- name: Install ArgoCD
+  become: false
+  command: >
+    kubectl apply -n {{ argocd_namespace }}
+    -f https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml
+
+- name: Wait for ArgoCD server deployment to be ready
+  become: false
+  command: >
+    kubectl rollout status deployment argocd-server
+    -n {{ argocd_namespace }} --timeout=300s
+
+- name: Patch ArgoCD server to use NodePort
+  become: false
+  command: >
+    kubectl patch svc argocd-server -n {{ argocd_namespace }}
+    -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30443, "name": "https"}, {"port": 80, "targetPort": 8080, "nodePort": 30080, "name": "http"}]}}'
+
+- name: Get ArgoCD initial admin password
+  become: false
+  shell: kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  register: argocd_password
+  changed_when: false
+
+- name: Display ArgoCD credentials
+  debug:
+    msg: |
+      ════════════════════════════════════════
+      ArgoCD is accessible at:
+        https://<ANY_NODE_IP>:30443
+      Username: admin
+      Password: {{ argocd_password.stdout }}
+      ════════════════════════════════════════

@@ -1,0 +1,138 @@
+---
+# ──────────────────────────────────────────────
+#  Monitoring — Prometheus stack, Loki, Promtail
+#  Runs on the master node (needs kubectl/helm)
+# ──────────────────────────────────────────────
+
+# ── Install Helm ──
+
+- name: Check if Helm is installed
+  command: helm version --short
+  register: helm_check
+  changed_when: false
+  failed_when: false
+  become: false
+
+- name: Download Helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: "0755"
+  when: helm_check.rc != 0
+
+- name: Install Helm
+  command: /tmp/get_helm.sh
+  when: helm_check.rc != 0
+
+# ── kube-prometheus-stack (Prometheus + Node Exporter + kube-state-metrics + Grafana) ──
+
+- name: Add prometheus-community Helm repo
+  become: false
+  command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  register: prom_repo
+  changed_when: "'has been added' in prom_repo.stdout"
+  failed_when: prom_repo.rc != 0 and 'already exists' not in prom_repo.stderr
+
+- name: Add grafana Helm repo
+  become: false
+  command: helm repo add grafana https://grafana.github.io/helm-charts
+  register: grafana_repo
+  changed_when: "'has been added' in grafana_repo.stdout"
+  failed_when: grafana_repo.rc != 0 and 'already exists' not in grafana_repo.stderr
+
+- name: Update Helm repos
+  become: false
+  command: helm repo update
+
+- name: Check if kube-prometheus-stack is installed
+  become: false
+  shell: helm list -n {{ monitoring_namespace }} -q | grep -w kube-prom-stack
+  register: prom_stack_check
+  changed_when: false
+  failed_when: false
+
+- name: Install kube-prometheus-stack
+  become: false
+  command: >
+    helm install kube-prom-stack prometheus-community/kube-prometheus-stack
+    -n {{ monitoring_namespace }} --create-namespace
+    --set grafana.service.type=NodePort
+    --set grafana.service.nodePort=30300
+  when: prom_stack_check.rc != 0
+
+- name: Wait for Prometheus stack pods to be ready
+  become: false
+  command: >
+    kubectl wait --for=condition=ready pod
+    -l app.kubernetes.io/instance=kube-prom-stack
+    -n {{ monitoring_namespace }} --timeout=300s
+  when: prom_stack_check.rc != 0
+
+# ── Loki ──
+
+- name: Check if Loki is installed
+  become: false
+  shell: helm list -n {{ monitoring_namespace }} -q | grep -w loki
+  register: loki_check
+  changed_when: false
+  failed_when: false
+
+- name: Copy Loki values file to master
+  copy:
+    src: "{{ playbook_dir }}/../monitoring/loki-values.yaml"
+    dest: /tmp/loki-values.yaml
+  when: loki_check.rc != 0
+
+- name: Install Loki
+  become: false
+  command: >
+    helm install loki grafana/loki
+    -n {{ monitoring_namespace }} --create-namespace
+    -f /tmp/loki-values.yaml
+  when: loki_check.rc != 0
+
+# ── Promtail ──
+
+- name: Check if Promtail is installed
+  become: false
+  shell: helm list -n {{ monitoring_namespace }} -q | grep -w promtail
+  register: promtail_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Promtail
+  become: false
+  command: >
+    helm install promtail grafana/promtail
+    -n {{ monitoring_namespace }}
+    --set "config.clients[0].url=http://loki:3100/loki/api/v1/push"
+  when: promtail_check.rc != 0
+
+# ── Display access info ──
+
+- name: Get Grafana admin password
+  become: false
+  shell: >
+    kubectl get secret kube-prom-stack-grafana
+    -n {{ monitoring_namespace }}
+    -o jsonpath="{.data.admin-password}" | base64 -d
+  register: grafana_password
+  changed_when: false
+
+- name: Display monitoring access info
+  debug:
+    msg: |
+      ════════════════════════════════════════
+      Monitoring Stack Deployed!
+
+      Grafana:
+        URL:      http://<ANY_NODE_IP>:30300
+        Username: admin
+        Password: {{ grafana_password.stdout }}
+
+      Prometheus: accessible inside the cluster at
+        http://kube-prom-stack-kube-prome-prometheus.{{ monitoring_namespace }}.svc:9090
+
+      Loki data source URL (add in Grafana):
+        http://loki.{{ monitoring_namespace }}.svc.cluster.local:3100
+      ════════════════════════════════════════
