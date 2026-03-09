@@ -227,6 +227,36 @@ The `monitoring/` directory contains the Loki Helm values and pre-built Grafana 
 | `monitoring/grafana-dashboard.json` | Grafana dashboard — NestJS backend CPU usage (Prometheus) + application logs (Loki) |
 | `monitoring/worker-node-dashboard.json` | Grafana dashboard — worker node system metrics (CPU, memory, disk, network, load, pods) |
 
+### Prerequisites
+
+The dashboards require the following components running in your cluster:
+
+| Component | Purpose | Required by |
+|-----------|---------|-------------|
+| **Prometheus** | Scrapes and stores all metrics | Both dashboards |
+| **Node Exporter** | Exposes host-level metrics (CPU, memory, disk, network, load) from each worker node | `worker-node-dashboard.json` |
+| **kube-state-metrics** | Exposes Kubernetes object metrics (`kube_pod_info`, etc.) | `worker-node-dashboard.json` (Pods panel) |
+| **Grafana** | Visualization and dashboarding | Both dashboards |
+| **Loki** | Log aggregation | `grafana-dashboard.json` (Logs panel) |
+| **Promtail** | Ships container logs to Loki | `grafana-dashboard.json` (Logs panel) |
+
+### Install Prometheus, Node Exporter, kube-state-metrics & Grafana
+
+The **kube-prometheus-stack** Helm chart installs all four in one step:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install kube-prom-stack prometheus-community/kube-prometheus-stack \
+  -n monitoring --create-namespace
+```
+
+This deploys:
+- **Prometheus** — scrapes metrics from all configured targets
+- **Node Exporter** — DaemonSet that runs on every node and exposes `node_*` metrics
+- **kube-state-metrics** — exposes `kube_pod_info` and other Kubernetes object metrics
+- **Grafana** — accessible via `kubectl port-forward svc/kube-prom-stack-grafana 3000:80 -n monitoring` (default login: `admin` / `prom-operator`)
+
 ### Install Loki
 
 Add the Grafana Helm repo and install Loki with the provided values:
@@ -253,6 +283,8 @@ helm install promtail grafana/promtail -n monitoring \
 3. Select **Loki**.
 4. Set the URL to `http://loki.monitoring.svc.cluster.local:3100`.
 5. Click **Save & Test**.
+
+> **Note:** Prometheus is automatically configured as a data source by kube-prometheus-stack. No manual setup needed.
 
 ### View logs in Grafana
 
