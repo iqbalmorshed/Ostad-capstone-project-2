@@ -103,6 +103,117 @@ npm run test:build
 
 Requires Node 22+ and `npm install` in both `quick-hire` and `quick-hire-app`. For the frontend build, `NEXT_PUBLIC_API_URL` is optional (defaults to `https://api.example.com/api` in the script).
 
+## Deployment Strategies
+
+The project supports three deployment strategies via Kubernetes and ArgoCD:
+
+### Rolling Update (default)
+
+The stable deployments in `k8s/backend.yaml` and `k8s/frontend.yaml` use a `RollingUpdate` strategy (`maxSurge: 1`, `maxUnavailable: 0`). ArgoCD auto-syncs these on every push to `main`.
+
+To trigger a stable release:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The [release pipeline](.github/workflows/release.yml) builds images, updates the stable manifests, and ArgoCD rolls them out with zero downtime.
+
+### Canary Release
+
+Canary deploys a single replica of the new version alongside the stable pods, routing ~33% of traffic to it for validation before a full rollout.
+
+**Prerequisites (one-time):**
+
+1. Add GitHub repo secrets: `ARGOCD_SERVER` and `ARGOCD_AUTH_TOKEN`
+2. Register the canary ArgoCD app:
+   ```bash
+   kubectl apply -f argocd/canary-application.yaml
+   ```
+
+**Deploy a canary:**
+
+```bash
+# 1. Tag with -canary suffix to trigger the canary pipeline
+git tag v1.2.0-canary
+git push origin v1.2.0-canary
+```
+
+The [canary pipeline](.github/workflows/canary.yml) builds the images, updates `k8s/canary/` manifests, and syncs the `quickhire-canary` ArgoCD app.
+
+**Monitor the canary:**
+
+```bash
+kubectl get pods -n quickhire -l track=canary
+kubectl logs -l track=canary -n quickhire
+```
+
+**Promote to stable** (if canary looks good):
+
+```bash
+# Release the same version as stable
+git tag v1.2.0
+git push origin v1.2.0
+
+# Remove the canary
+kubectl delete deployment backend-canary frontend-canary -n quickhire
+```
+
+**Rollback** (if canary fails):
+
+```bash
+kubectl delete deployment backend-canary frontend-canary -n quickhire
+```
+
+### Blue-Green
+
+Blue-green keeps two full environments. Traffic switches instantly by updating the Service selector.
+
+**Setup:**
+
+```bash
+kubectl apply -f argocd/blue-green-application.yaml
+argocd app sync quickhire-blue-green
+```
+
+**Switch traffic from blue to green:**
+
+```bash
+kubectl patch svc backend -n quickhire -p '{"spec":{"selector":{"version":"green"}}}'
+kubectl patch svc frontend -n quickhire -p '{"spec":{"selector":{"version":"green"}}}'
+```
+
+**Rollback to blue:**
+
+```bash
+kubectl patch svc backend -n quickhire -p '{"spec":{"selector":{"version":"blue"}}}'
+kubectl patch svc frontend -n quickhire -p '{"spec":{"selector":{"version":"blue"}}}'
+```
+
+### Strategy file layout
+
+```
+k8s/                        ← Auto-synced by ArgoCD (rolling update)
+├── backend.yaml
+├── frontend.yaml
+├── canary/                 ← Manual sync only
+│   ├── backend-canary.yaml
+│   └── frontend-canary.yaml
+└── blue-green/             ← Manual sync only
+    ├── backend-blue.yaml
+    ├── backend-green.yaml
+    ├── backend-service.yaml
+    ├── frontend-blue.yaml
+    ├── frontend-green.yaml
+    └── frontend-service.yaml
+
+argocd/
+├── application.yaml             ← Stable (auto-sync)
+├── canary-application.yaml      ← Canary (manual sync)
+└── blue-green-application.yaml  ← Blue-green (manual sync)
+```
+
 ## More details
 
 - **Backend:** [quick-hire/README.md](quick-hire/README.md) — API, auth, RBAC, endpoints.  
