@@ -53,6 +53,32 @@ resource "aws_security_group" "k8s" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+	from_port   = 4789
+	to_port     = 4789
+	protocol    = "udp"
+	self        = true
+	description = "Calico VXLAN overlay networking"
+  }
+
+  ingress {
+	from_port   = 30443
+	to_port     = 30443
+	protocol    = "tcp"
+	cidr_blocks = ["0.0.0.0/0"]
+	description = "ArgoCD HTTPS NodePort"
+  }
+
+  ingress {
+	from_port   = 30080
+	to_port     = 30080
+	protocol    = "tcp"
+	cidr_blocks = ["0.0.0.0/0"]
+	description = "ArgoCD HTTP NodePort"
+  }
+
+  
+
   # Prometheus
   ingress {
     description = "Prometheus"
