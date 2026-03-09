@@ -27,7 +27,7 @@ spec:
           command: ['sh', '-c', 'until nc -z mongo 27017; do echo waiting for mongo; sleep 2; done']
       containers:
         - name: backend
-          image: iqbalmorshed/quickhire-backend:v1.0.0
+          image: iqbalmorshed/quickhire-backend:v1.0.1
           ports:
             - containerPort: 3000
           env:
