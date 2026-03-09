@@ -41,14 +41,14 @@ spec:
               memory: 512Mi
           readinessProbe:
             httpGet:
-              path: /api
+              path: /api/health
               port: 3000
             initialDelaySeconds: 20
             periodSeconds: 5
             failureThreshold: 6
           livenessProbe:
             httpGet:
-              path: /api
+              path: /api/health
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10

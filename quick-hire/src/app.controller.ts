@@ -5,8 +5,13 @@ import { SkipThrottle } from '@nestjs/throttler';
 export class AppController {
 
   @Get()
-  @SkipThrottle()
   getHello(): string {
-    return 'QuickHire app is running'
+    return 'QuickHire app is running';
+  }
+
+  @Get('health')
+  @SkipThrottle()
+  health(): { status: string } {
+    return { status: 'ok' };
   }
 }
