@@ -1,11 +1,44 @@
+# ── PersistentVolume (hostPath for bare-metal / kubeadm clusters) ──
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongo-pv
+  labels:
+    app: mongo
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /data/quickhire/mongo
+    type: DirectoryOrCreate
+---
+# ── Headless Service (required for StatefulSet DNS) ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: quickhire
+spec:
+  clusterIP: None
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+# ── StatefulSet ──
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mongo
   namespace: quickhire
   labels:
     app: mongo
 spec:
+  serviceName: mongo
   replicas: 1
   selector:
     matchLabels:
@@ -30,31 +63,12 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-      volumes:
-        - name: mongo-data
-          persistentVolumeClaim:
-            claimName: mongo-pvc
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mongo
-  namespace: quickhire
-spec:
-  selector:
-    app: mongo
-  ports:
-    - port: 27017
-      targetPort: 27017
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mongo-pvc
-  namespace: quickhire
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
