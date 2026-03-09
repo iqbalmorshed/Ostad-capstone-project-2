@@ -10,7 +10,7 @@ export class AppController {
   }
 
   @Get('health')
-  @SkipThrottle()
+  @SkipThrottle({ default: true, strict: true, application: true })
   health(): { status: string } {
     return { status: 'ok' };
   }
