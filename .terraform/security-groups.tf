@@ -62,6 +62,14 @@ resource "aws_security_group" "k8s" {
   }
 
   ingress {
+	from_port   = 179
+	to_port     = 179
+	protocol    = "tcp"
+	self        = true
+	description = "Calico BGP peering"
+  }
+
+  ingress {
 	from_port   = 30443
 	to_port     = 30443
 	protocol    = "tcp"

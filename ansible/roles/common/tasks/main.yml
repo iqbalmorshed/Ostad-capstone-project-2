@@ -50,6 +50,7 @@
       - curl
       - gnupg
       - lsb-release
+      - conntrack
     state: present
     update_cache: true
 

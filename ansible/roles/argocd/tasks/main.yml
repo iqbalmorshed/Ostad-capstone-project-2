@@ -15,6 +15,7 @@
   command: >
     kubectl apply -n {{ argocd_namespace }}
     -f https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml
+    --server-side --force-conflicts
 
 - name: Wait for ArgoCD server deployment to be ready
   become: false
