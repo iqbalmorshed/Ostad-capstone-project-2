@@ -29,6 +29,16 @@
     kubectl patch svc argocd-server -n {{ argocd_namespace }}
     -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30443, "name": "https"}, {"port": 80, "targetPort": 8080, "nodePort": 30080, "name": "http"}]}}'
 
+- name: Copy ArgoCD application manifest to master
+  become: false
+  copy:
+    src: "{{ playbook_dir }}/../argocd/application.yaml"
+    dest: /tmp/argocd-application.yaml
+
+- name: Deploy ArgoCD application
+  become: false
+  command: kubectl apply -f /tmp/argocd-application.yaml
+
 - name: Get ArgoCD initial admin password
   become: false
   shell: kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d

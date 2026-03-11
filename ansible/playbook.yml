@@ -6,7 +6,7 @@
 #    cd .terraform && terraform apply
 #    ../ansible/generate-inventory.sh
 #    cd ../ansible
-#    ansible-playbook -i inventory.ini playbook.yml
+#    ansible-playbook -i inventory.ini playbook.yml [-v] 
 # ══════════════════════════════════════════════
 
 # ── Step 1: Common setup on ALL nodes ──
