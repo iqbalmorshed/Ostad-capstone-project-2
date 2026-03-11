@@ -58,6 +58,10 @@
     -n {{ monitoring_namespace }} --create-namespace
     --set grafana.service.type=NodePort
     --set grafana.service.nodePort=30300
+    --set grafana.additionalDataSources[0].name=Loki
+    --set grafana.additionalDataSources[0].type=loki
+    --set grafana.additionalDataSources[0].url=http://loki.{{ monitoring_namespace }}.svc.cluster.local:3100
+    --set grafana.additionalDataSources[0].access=proxy
   when: prom_stack_check.rc != 0
 
 - name: Wait for Prometheus stack pods to be ready

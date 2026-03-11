@@ -251,8 +251,8 @@ The playbook runs 6 stages in order:
 | 2 | Master | `master` | Runs `kubeadm init`, installs Calico CNI, generates join token |
 | 3 | Workers | `worker` | Joins each worker to the cluster using the token from stage 2 |
 | 4 | Master | *(verify)* | Waits for all nodes to reach `Ready` state |
-| 5 | Master | `argocd` | Installs ArgoCD, exposes it on NodePort 30443 |
-| 6 | Master | `monitoring` | Installs Helm, kube-prometheus-stack, Loki, and Promtail |
+| 5 | Master | `argocd` | Installs ArgoCD, exposes it on NodePort 30443, deploys the QuickHire ArgoCD application |
+| 6 | Master | `monitoring` | Installs Helm, kube-prometheus-stack (with Loki datasource auto-configured), Loki, and Promtail |
 
 ### Running individual roles
 
@@ -310,66 +310,23 @@ The `monitoring/` directory contains the Loki Helm values and pre-built Grafana 
 |------|-------------|
 | `monitoring/loki-values.yaml` | Helm values for deploying Loki in single-binary mode (filesystem storage, no caching/gateway) |
 | `monitoring/grafana-dashboard.json` | Grafana dashboard — NestJS backend CPU usage (Prometheus) + application logs (Loki) |
+| `monitoring/backend-logs-dashboard.json` | Grafana dashboard — backend log volume, error logs, and all logs (Loki) |
 | `monitoring/worker-node-dashboard.json` | Grafana dashboard — worker node system metrics (CPU, memory, disk, network, load, pods) |
 
-### Prerequisites
+### What gets installed
 
-The dashboards require the following components running in your cluster:
+The Ansible playbook (stage 6) automatically installs and configures the entire monitoring stack:
 
-| Component | Purpose | Required by |
-|-----------|---------|-------------|
-| **Prometheus** | Scrapes and stores all metrics | Both dashboards |
-| **Node Exporter** | Exposes host-level metrics (CPU, memory, disk, network, load) from each worker node | `worker-node-dashboard.json` |
-| **kube-state-metrics** | Exposes Kubernetes object metrics (`kube_pod_info`, etc.) | `worker-node-dashboard.json` (Pods panel) |
-| **Grafana** | Visualization and dashboarding | Both dashboards |
-| **Loki** | Log aggregation | `grafana-dashboard.json` (Logs panel) |
-| **Promtail** | Ships container logs to Loki | `grafana-dashboard.json` (Logs panel) |
+| Component | Purpose |
+|-----------|---------|
+| **Prometheus** | Scrapes and stores all metrics |
+| **Node Exporter** | DaemonSet exposing host-level metrics (CPU, memory, disk, network, load) |
+| **kube-state-metrics** | Exposes Kubernetes object metrics (`kube_pod_info`, etc.) |
+| **Grafana** | Visualization and dashboarding (NodePort 30300) |
+| **Loki** | Log aggregation |
+| **Promtail** | Ships container logs to Loki |
 
-### Install Prometheus, Node Exporter, kube-state-metrics & Grafana
-
-The **kube-prometheus-stack** Helm chart installs all four in one step:
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install kube-prom-stack prometheus-community/kube-prometheus-stack \
-  -n monitoring --create-namespace
-```
-
-This deploys:
-- **Prometheus** — scrapes metrics from all configured targets
-- **Node Exporter** — DaemonSet that runs on every node and exposes `node_*` metrics
-- **kube-state-metrics** — exposes `kube_pod_info` and other Kubernetes object metrics
-- **Grafana** — accessible via `kubectl port-forward svc/kube-prom-stack-grafana 3000:80 -n monitoring` (default login: `admin` / `prom-operator`)
-
-### Install Loki
-
-Add the Grafana Helm repo and install Loki with the provided values:
-
-```bash
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-helm install loki grafana/loki -n monitoring --create-namespace -f monitoring/loki-values.yaml
-```
-
-### Install Promtail (log shipper)
-
-Promtail ships container logs to Loki:
-
-```bash
-helm install promtail grafana/promtail -n monitoring \
-  --set "config.clients[0].url=http://loki:3100/loki/api/v1/push"
-```
-
-### Add Loki as a data source in Grafana
-
-1. Open Grafana (e.g. `http://<GRAFANA_HOST>:3000`).
-2. Go to **Configuration → Data Sources → Add data source**.
-3. Select **Loki**.
-4. Set the URL to `http://loki.monitoring.svc.cluster.local:3100`.
-5. Click **Save & Test**.
-
-> **Note:** Prometheus is automatically configured as a data source by kube-prometheus-stack. No manual setup needed.
+> **Note:** Both Prometheus and Loki are automatically configured as Grafana data sources. No manual setup needed.
 
 ### View logs in Grafana
 
@@ -386,6 +343,7 @@ helm install promtail grafana/promtail -n monitoring \
 1. Go to **Dashboards → Import** (or the **+** icon → **Import**).
 2. Click **Upload JSON file** and select one of:
    - `monitoring/grafana-dashboard.json` — shows backend CPU usage alongside live application logs.
+   - `monitoring/backend-logs-dashboard.json` — shows backend log volume, error/warning logs, and all logs.
    - `monitoring/worker-node-dashboard.json` — shows per-node CPU, memory, disk, network, load averages, and pod counts.
 3. Select the appropriate Prometheus and Loki data sources when prompted.
 4. Click **Import**.
