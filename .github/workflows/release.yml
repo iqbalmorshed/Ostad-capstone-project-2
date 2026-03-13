@@ -73,7 +73,7 @@ jobs:
             ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.FRONTEND_IMAGE }}:latest
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:2021/api' }}
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
