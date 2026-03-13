@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-jobs
+  namespace: quickhire
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-mongo
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z mongo 27017; do echo waiting for mongo; sleep 2; done']
+      containers:
+        - name: seed
+          image: mongo:7
+          command:
+            - mongosh
+            - "mongodb://mongo:27017/quick-hire"
+            - --eval
+            - |
+              const existing = db.jobs.countDocuments();
+              if (existing > 0) {
+                print(`Already have ${existing} job(s). Skipping seed.`);
+                quit(0);
+              }
+              db.jobs.insertMany([
+                { title: "Senior Backend Developer", company: "TechFlow Inc", location: "Remote", category: "Engineering", description: "Build scalable APIs and services. Experience with Node.js, NestJS, and MongoDB required. Join our distributed team.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Frontend Engineer", company: "Pixel Labs", location: "San Francisco, CA", category: "Technology", description: "Create beautiful, responsive UIs with React and Next.js. Strong CSS and TypeScript skills preferred.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "UX Designer", company: "Design Studio Co", location: "New York, NY", category: "Design", description: "Own the end-to-end design process for our product suite. Figma, user research, and prototyping experience required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Sales Representative", company: "Growth Sales Ltd", location: "Chicago, IL", category: "Sales", description: "Drive new business and manage key accounts. Base salary plus commission. B2B SaaS experience a plus.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Marketing Manager", company: "BrandWave", location: "Austin, TX", category: "Marketing", description: "Lead content, SEO, and campaign strategy. Manage a small team and work with product and sales.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Financial Analyst", company: "Summit Finance", location: "Boston, MA", category: "Finance", description: "Support budgeting, forecasting, and reporting. CFA or equivalent experience preferred.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "DevOps Engineer", company: "CloudScale", location: "Remote", category: "Engineering", description: "Maintain CI/CD, Kubernetes, and cloud infrastructure. AWS or GCP experience required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Product Manager", company: "Product First", location: "Seattle, WA", category: "Business", description: "Define roadmap and work with engineering and design. Strong analytical and communication skills.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "HR Business Partner", company: "PeopleOps", location: "Denver, CO", category: "Human Resource", description: "Support hiring, onboarding, and employee relations. Experience in fast-growing tech companies.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Data Engineer", company: "DataDriven Inc", location: "Remote", category: "Technology", description: "Build data pipelines and warehouses. SQL, Python, and Spark experience required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Junior Software Developer", company: "StarterTech", location: "Portland, OR", category: "Engineering", description: "Learn and contribute to our web applications. Mentorship provided. CS degree or bootcamp okay.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Graphic Designer", company: "Visual Studio", location: "Los Angeles, CA", category: "Design", description: "Create marketing assets, illustrations, and brand materials. Adobe Creative Suite proficiency required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Account Executive", company: "Enterprise Solutions", location: "Dallas, TX", category: "Sales", description: "Close enterprise deals and nurture relationships. Experience with long sales cycles preferred.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Content Writer", company: "Content Hub", location: "Remote", category: "Marketing", description: "Write blog posts, docs, and marketing copy. SEO knowledge and technical writing experience a plus.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Accountant", company: "Ledger Plus", location: "Philadelphia, PA", category: "Finance", description: "Handle month-end close, reconciliations, and compliance. CPA or working toward CPA preferred.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Full Stack Developer", company: "Stack Labs", location: "Miami, FL", category: "Technology", description: "Work on both frontend and backend features. React and Node experience required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "QA Engineer", company: "Quality First", location: "Atlanta, GA", category: "Engineering", description: "Design and automate tests. Experience with Cypress, Jest, or similar tools.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Business Analyst", company: "Strategy Corp", location: "Washington, DC", category: "Business", description: "Gather requirements and define processes. Strong Excel and presentation skills required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Recruiter", company: "Talent Find", location: "Remote", category: "Human Resource", description: "Source and hire for engineering and product roles. Tech recruiting experience preferred.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Mobile Developer", company: "AppWorks", location: "San Diego, CA", category: "Engineering", description: "Build iOS and Android apps with React Native or Flutter. Published apps in portfolio preferred.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "UI Designer", company: "Interface Co", location: "Minneapolis, MN", category: "Design", description: "Design interfaces for web and mobile. Component systems and design systems experience a plus.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Inside Sales Rep", company: "Velocity Sales", location: "Phoenix, AZ", category: "Sales", description: "Qualify leads and book meetings for the sales team. Strong phone and CRM skills.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Growth Marketing Specialist", company: "Scale Marketing", location: "Remote", category: "Marketing", description: "Run paid campaigns and experiments. Google Ads and Meta Ads experience required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Financial Controller", company: "Control Finance", location: "Houston, TX", category: "Finance", description: "Own financial reporting and internal controls. CPA and prior controller experience required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Security Engineer", company: "SecureNet", location: "Remote", category: "Technology", description: "Implement security best practices and respond to incidents. Security certifications a plus.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Scrum Master", company: "Agile Teams", location: "Columbus, OH", category: "Business", description: "Facilitate ceremonies and remove blockers. CSM or similar certification preferred.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "HR Coordinator", company: "People First", location: "Nashville, TN", category: "Human Resource", description: "Support recruiting, onboarding, and HR operations. Entry-level role with growth potential.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Backend Developer", company: "API Labs", location: "Detroit, MI", category: "Engineering", description: "Develop and maintain microservices. Experience with Go, Java, or Node.js required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Brand Designer", company: "Brand House", location: "San Jose, CA", category: "Design", description: "Define and evolve brand identity across all touchpoints. Portfolio showing brand systems required.", createdAt: new Date(), updatedAt: new Date() },
+                { title: "Sales Engineer", company: "Solution Sales", location: "Charlotte, NC", category: "Sales", description: "Demo product and support technical evaluations. Technical background and presentation skills required.", createdAt: new Date(), updatedAt: new Date() }
+              ]);
+              print("Inserted 30 jobs into MongoDB.");
+      restartPolicy: Never
