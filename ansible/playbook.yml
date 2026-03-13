@@ -52,14 +52,21 @@
       debug:
         msg: "{{ node_status.stdout_lines }}"
 
-# ── Step 5: Install ArgoCD ──
+# ── Step 5: Install NGINX Ingress Controller ──
+- name: Install NGINX Ingress Controller
+  hosts: master
+  become: true
+  roles:
+    - ingress
+
+# ── Step 6: Install ArgoCD ──
 - name: Install ArgoCD
   hosts: master
   become: true
   roles:
     - argocd
 
-# ── Step 6: Install monitoring stack ──
+# ── Step 7: Install monitoring stack ──
 - name: Install monitoring stack (Prometheus, Grafana, Loki, Promtail)
   hosts: master
   become: true

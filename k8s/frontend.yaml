@@ -52,10 +52,9 @@ metadata:
   name: frontend
   namespace: quickhire
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: frontend
   ports:
     - port: 3000
       targetPort: 3000
-      nodePort: 30020

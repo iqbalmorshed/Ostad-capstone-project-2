@@ -66,10 +66,9 @@ metadata:
   name: backend
   namespace: quickhire
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: backend
   ports:
     - port: 3000
       targetPort: 3000
-      nodePort: 30021

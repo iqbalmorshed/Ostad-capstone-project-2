@@ -1,0 +1,44 @@
+---
+# ──────────────────────────────────────────────
+#  NGINX Ingress Controller — install on master
+# ──────────────────────────────────────────────
+
+- name: Check if ingress-nginx namespace exists
+  become: false
+  command: kubectl get namespace {{ ingress_namespace }}
+  register: ingress_ns_check
+  changed_when: false
+  failed_when: false
+
+- name: Install NGINX Ingress Controller
+  become: false
+  command: >
+    kubectl apply
+    -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_nginx_version }}/deploy/static/provider/baremetal/deploy.yaml
+  when: ingress_ns_check.rc != 0
+
+- name: Wait for ingress-nginx controller to be ready
+  become: false
+  command: >
+    kubectl rollout status deployment ingress-nginx-controller
+    -n {{ ingress_namespace }} --timeout=300s
+
+- name: Patch ingress-nginx service to use NodePort on port 80 and 443
+  become: false
+  command: >
+    kubectl patch svc ingress-nginx-controller -n {{ ingress_namespace }}
+    -p '{"spec": {"type": "NodePort", "ports": [{"port": 80, "targetPort": 80, "nodePort": 30100, "protocol": "TCP", "name": "http"}, {"port": 443, "targetPort": 443, "nodePort": 30101, "protocol": "TCP", "name": "https"}]}}'
+
+- name: Display Ingress Controller info
+  become: false
+  debug:
+    msg: |
+      ════════════════════════════════════════
+      NGINX Ingress Controller installed.
+      HTTP:  http://<ANY_NODE_IP>:30100
+      HTTPS: https://<ANY_NODE_IP>:30101
+
+      Routes configured via k8s/ingress.yaml:
+        /     → frontend
+        /api  → backend
+      ════════════════════════════════════════

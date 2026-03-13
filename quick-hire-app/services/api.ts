@@ -10,7 +10,7 @@ export const BASE_URL =
     ? process.env.NEXT_PUBLIC_API_URL
     : typeof window !== 'undefined'
       ? '/api'
-      : 'http://203.190.9.174:3011/api';
+      : 'http://backend.quickhire.svc.cluster.local:3000/api';
 
 export async function apiFetch<T>(
   path: string,

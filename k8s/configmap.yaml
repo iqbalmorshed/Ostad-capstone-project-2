@@ -9,4 +9,4 @@ data:
   JWT_REFRESH_EXPIRES: "7d"
   PORT: "3000"
   NODE_ENV: "production"
-  NEXT_PUBLIC_API_URL: "http://34.200.218.39:30021/api"
+  NEXT_PUBLIC_API_URL: ""
