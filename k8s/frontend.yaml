@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: iqbalmorshed/quickhire-frontend:v1.0.1
+          image: iqbalmorshed/quickhire-frontend:v1.0.5
           ports:
             - containerPort: 3000
           resources:
