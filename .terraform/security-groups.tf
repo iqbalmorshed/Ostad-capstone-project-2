@@ -53,73 +53,13 @@ resource "aws_security_group" "k8s" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow all traffic between cluster nodes (pod overlay, DNS, metrics, etc.)
   ingress {
-	from_port   = 4789
-	to_port     = 4789
-	protocol    = "udp"
-	self        = true
-	description = "Calico VXLAN overlay networking"
-  }
-
-  ingress {
-	from_port   = 179
-	to_port     = 179
-	protocol    = "tcp"
-	self        = true
-	description = "Calico BGP peering"
-  }
-
-  ingress {
-	from_port   = 30443
-	to_port     = 30443
-	protocol    = "tcp"
-	cidr_blocks = ["0.0.0.0/0"]
-	description = "ArgoCD HTTPS NodePort"
-  }
-
-  ingress {
-	from_port   = 30080
-	to_port     = 30080
-	protocol    = "tcp"
-	cidr_blocks = ["0.0.0.0/0"]
-	description = "ArgoCD HTTP NodePort"
-  }
-
-  
-
-  # Prometheus
-  ingress {
-    description = "Prometheus"
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Prometheus"
-    from_port   = 9100
-    to_port     = 9100
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Grafana
-  ingress {
-    description = "Grafana"
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Flannel VXLAN (CNI overlay)
-  ingress {
-    description = "Flannel VXLAN"
-    from_port   = 8472
-    to_port     = 8472
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
+    description = "Intra-cluster traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
   }
 
   # --- Outbound ---
